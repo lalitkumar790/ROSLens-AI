@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="ROSLens AI: evidence-backed ROS 2 and Gazebo log diagnosis.">
+  <title>ROSLens AI — Robotics Debugging Copilot</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark">R</span><span>ROSLens <em>AI</em></span></a>
+    <div class="top-actions"><span class="status-dot"></span><span id="mode-label">Heuristic mode</span><a href="/docs" target="_blank" rel="noreferrer">API docs ↗</a></div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow"><span></span> ROBOTICS SYSTEMS INTELLIGENCE</div>
+      <h1>Debug the robot.<br><span>Not the whole night.</span></h1>
+      <p>Turn noisy ROS 2 and Gazebo logs into evidence-backed diagnostic hypotheses and practical next checks.</p>
+      <div class="hero-chips"><span>ROS 2</span><span>Gazebo</span><span>Open-weight AI ready</span><span>Safety-first</span></div>
+    </section>
+
+    <section class="workspace">
+      <div class="input-panel panel">
+        <div class="panel-heading"><div><span class="step">01</span><h2>Bring the evidence</h2></div><span class="muted">LOG INPUT</span></div>
+        <div class="sample-row">
+          <label for="sample-select">Try a known issue</label>
+          <select id="sample-select"><option value="">Choose sample log…</option><option value="package">Package not found</option><option value="tf">TF extrapolation</option><option value="qos">QoS mismatch</option></select>
+          <button id="load-sample" class="button button-soft" type="button">Load sample</button>
+        </div>
+        <label class="field-label" for="log-input">ROS 2 / Gazebo output</label>
+        <textarea id="log-input" spellcheck="false" placeholder="[ERROR] [launch]: package 'robot_bringup' not found…" maxlength="20000"></textarea>
+        <div class="input-meta"><span id="char-count">0 / 20,000 characters</span><span>Redact secrets before sharing logs.</span></div>
+        <div class="controls"><label class="toggle"><input id="use-ai" type="checkbox" checked><span class="toggle-ui"></span><span>Request AI explanation when configured</span></label><button id="diagnose" class="button button-primary" type="button"><span>Diagnose log</span><span aria-hidden="true">↗</span></button></div>
+        <div id="error" class="error-banner" role="alert" hidden></div>
+      </div>
+
+      <div class="results-panel panel">
+        <div class="panel-heading"><div><span class="step">02</span><h2>Read the signals</h2></div><span id="result-tag" class="muted">AWAITING INPUT</span></div>
+        <div id="empty-state" class="empty-state"><div class="empty-icon">⌁</div><h3>Your diagnosis will appear here</h3><p>Start with a log or load one of the sample failures. ROSLens treats each match as a hypothesis, not a guaranteed root cause.</p></div>
+        <div id="results" hidden>
+          <p id="summary" class="summary"></p>
+          <div id="diagnostics" class="diagnostics"></div>
+          <div id="ai-block" class="ai-block" hidden><div class="ai-title"><span class="ai-spark">✳</span><h3>Model explanation</h3><span id="ai-status"></span></div><div id="ai-explanation" class="ai-explanation"></div></div>
+          <div id="ai-note" class="note" hidden></div>
+          <div class="safety-note"><span>ⓘ</span><p>Review suggested commands before running them. This tool never executes commands on your machine.</p></div>
+        </div>
+      </div>
+    </section>
+    <footer><span>ROSLens AI <b>·</b> Early MVP</span><span>Built for people who make robots move.</span><a href="https://github.com/lalitkumar790/ROSLens-AI" target="_blank" rel="noreferrer">Source on GitHub ↗</a></footer>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
