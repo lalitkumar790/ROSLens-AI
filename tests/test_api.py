@@ -45,7 +45,7 @@ def test_reject_too_large_log():
 def test_image_requires_vision_model(monkeypatch):
     monkeypatch.delenv("LLM_BASE_URL", raising=False)
     monkeypatch.delenv("LLM_MODEL", raising=False)
-    response = client.post("/api/diagnose-image", files={"image":("screen.png",b"\\x89PNG\\r\\n\\x1a\\n" + b"x","image/png")})
+    response = client.post("/api/diagnose-image", files={"image":("screen.png",b"\x89PNG\r\n\x1a\n" + b"x","image/png")})
     assert response.status_code == 503
 
 
@@ -66,7 +66,7 @@ def test_successful_image_diagnosis_uses_ollama_format(monkeypatch):
     monkeypatch.setenv("LLM_MODEL", "gemma4:e4b")
     mock = AsyncMock(return_value="The screenshot shows a ROS launch error.")
     monkeypatch.setattr("app.main.ask_model_about_image", mock)
-    png = b"\\x89PNG\\r\\n\\x1a\\n" + b"fake-image-payload"
+    png = b"\x89PNG\r\n\x1a\n" + b"fake-image-payload"
     response = client.post(
         "/api/diagnose-image",
         data={"question":"Focus on the launch error"},
