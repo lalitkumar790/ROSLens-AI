@@ -7,6 +7,8 @@ const samples = {
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const severityClass = (value) => ['high','medium','low'].includes(value) ? value : 'unknown';
 const labels = {high:'HIGH PRIORITY',medium:'MEDIUM',low:'LOW',unknown:'UNCLASSIFIED'};
+let selectedImage = null;
+let previewUrl = null;
 
 async function refreshHealth() {
   try {
@@ -42,6 +44,14 @@ function render(data) {
   $('ai-note').hidden = !data.ai_note;
   $('ai-note').textContent = data.ai_note || '';
 }
+function clearSelectedImage() {
+  selectedImage = null;
+  $('screen-input').value = '';
+  $('image-preview-wrap').hidden = true;
+  $('image-result').hidden = true;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = null;
+}
 $('log-input').addEventListener('input', () => $('char-count').textContent = `${$('log-input').value.length.toLocaleString()} / 20,000 characters`);
 $('load-sample').addEventListener('click', () => {
   const key = $('sample-select').value;
@@ -64,5 +74,61 @@ $('diagnose').addEventListener('click', async () => {
     $('error').hidden = false;
     $('error').textContent = err instanceof Error ? err.message : 'Unexpected error while diagnosing.';
   } finally { setBusy(false); }
+});
+$('screen-input').addEventListener('change', () => {
+  $('image-error').hidden = true;
+  $('image-result').hidden = true;
+  const file = $('screen-input').files?.[0];
+  selectedImage = null;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = null;
+  if (!file) { $('image-preview-wrap').hidden = true; return; }
+  if (!['image/png','image/jpeg','image/webp'].includes(file.type)) {
+    $('image-error').hidden = false;
+    $('image-error').textContent = 'Choose a PNG, JPEG, or WebP screenshot.';
+    $('screen-input').value = '';
+    $('image-preview-wrap').hidden = true;
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    $('image-error').hidden = false;
+    $('image-error').textContent = 'Image exceeds the 5 MiB limit.';
+    $('screen-input').value = '';
+    $('image-preview-wrap').hidden = true;
+    return;
+  }
+  selectedImage = file;
+  previewUrl = URL.createObjectURL(file);
+  $('image-preview').src = previewUrl;
+  $('image-preview-wrap').hidden = false;
+});
+$('clear-image').addEventListener('click', clearSelectedImage);
+$('diagnose-image').addEventListener('click', async () => {
+  $('image-error').hidden = true;
+  $('image-result').hidden = true;
+  if (!selectedImage) {
+    $('image-error').hidden = false;
+    $('image-error').textContent = 'Choose a screenshot first.';
+    return;
+  }
+  const button = $('diagnose-image');
+  button.disabled = true;
+  button.textContent = 'Analyzing screenshot…';
+  try {
+    const form = new FormData();
+    form.append('image', selectedImage, selectedImage.name);
+    form.append('question', $('screen-question').value.trim());
+    const response = await fetch('/api/diagnose-image', {method:'POST',body:form});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Could not analyze screenshot.');
+    $('image-explanation').textContent = data.ai_explanation || 'No explanation returned.';
+    $('image-result').hidden = false;
+  } catch (err) {
+    $('image-error').hidden = false;
+    $('image-error').textContent = err instanceof Error ? err.message : 'Unexpected screenshot-analysis error.';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Analyze screenshot ↗';
+  }
 });
 refreshHealth();
