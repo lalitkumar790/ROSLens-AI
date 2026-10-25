@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from app.main import app
 
 client = TestClient(app)
@@ -18,10 +17,7 @@ def test_homepage():
 
 
 def test_diagnose_without_ai():
-    response = client.post("/api/diagnose", json={
-        "log_text": "Package 'example_pkg' not found",
-        "use_ai": False,
-    })
+    response = client.post("/api/diagnose",json={"log_text":"Package 'example_pkg' not found","use_ai":False})
     assert response.status_code == 200
     data = response.json()
     assert data["ai_used"] is False
@@ -29,10 +25,15 @@ def test_diagnose_without_ai():
 
 
 def test_reject_empty_log():
-    response = client.post("/api/diagnose", json={"log_text": "   ", "use_ai": False})
+    response = client.post("/api/diagnose",json={"log_text":"   ","use_ai":False})
     assert response.status_code == 422
 
 
 def test_reject_missing_log():
-    response = client.post("/api/diagnose", json={"use_ai": False})
+    response = client.post("/api/diagnose",json={"use_ai":False})
+    assert response.status_code == 422
+
+
+def test_reject_too_large_log():
+    response = client.post("/api/diagnose",json={"log_text":"x"*21000,"use_ai":False})
     assert response.status_code == 422
