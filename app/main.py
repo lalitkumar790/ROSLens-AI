@@ -9,13 +9,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.diagnostics import diagnose_log
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
-
 MAX_LOG_CHARS = max(1000, int(os.getenv("MAX_LOG_CHARS", "20000")))
 app = FastAPI(title="ROSLens AI", version="0.1.0", description="Safety-first ROS 2 log diagnosis copilot")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
@@ -24,6 +23,13 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 class DiagnoseRequest(BaseModel):
     log_text: str = Field(min_length=1, max_length=MAX_LOG_CHARS)
     use_ai: bool = True
+
+    @field_validator("log_text")
+    @classmethod
+    def reject_blank_log(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Please provide non-empty log text.")
+        return value
 
 
 class DiagnoseResponse(BaseModel):
@@ -45,12 +51,7 @@ def index() -> FileResponse:
 def health() -> dict[str, Any]:
     base_url = os.getenv("LLM_BASE_URL", "").strip()
     model = os.getenv("LLM_MODEL", "").strip()
-    return {
-        "status": "ok", "version": app.version,
-        "ai_configured": bool(base_url and model),
-        "model": model if base_url and model else None,
-        "mode": "ai-enabled" if base_url and model else "heuristic-only",
-    }
+    return {"status":"ok","version":app.version,"ai_configured":bool(base_url and model),"model":model if base_url and model else None,"mode":"ai-enabled" if base_url and model else "heuristic-only"}
 
 
 async def ask_model(log_text: str, analysis: dict[str, Any]) -> str:
@@ -67,37 +68,30 @@ async def ask_model(log_text: str, analysis: dict[str, Any]) -> str:
         "Prefer read-only diagnostic commands. If evidence is insufficient, say what context is needed."
     )
     user = f"Heuristic candidates (not ground truth):\n{analysis}\n\nSubmitted log:\n```text\n{log_text[:12000]}\n```"
-    payload = {
-        "model": model, "temperature": 0.2,
-        "messages": [{"role":"system","content":system},{"role":"user","content":user}],
-    }
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type":"application/json"}
+    payload = {"model":model,"temperature":0.2,"messages":[{"role":"system","content":system},{"role":"user","content":user}]}
     async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
+        response = await client.post(f"{base_url}/chat/completions",headers={"Authorization":f"Bearer {api_key}","Content-Type":"application/json"},json=payload)
         response.raise_for_status()
         data = response.json()
     try:
         content = data["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError("The configured model endpoint returned an unexpected response format.") from exc
-    if not isinstance(content, str) or not content.strip():
+    if not isinstance(content,str) or not content.strip():
         raise RuntimeError("The configured model returned an empty explanation.")
     return content.strip()
 
 
 @app.post("/api/diagnose", response_model=DiagnoseResponse)
 async def diagnose(request: DiagnoseRequest) -> DiagnoseResponse:
-    log_text = request.log_text.strip()
-    if not log_text:
-        raise HTTPException(status_code=422, detail="Please paste a non-empty log.")
-    analysis = diagnose_log(log_text)
+    analysis = diagnose_log(request.log_text.strip())
     ai_used, ai_note, ai_explanation = False, None, None
     if request.use_ai:
-        if not os.getenv("LLM_BASE_URL", "").strip() or not os.getenv("LLM_MODEL", "").strip():
+        if not os.getenv("LLM_BASE_URL","").strip() or not os.getenv("LLM_MODEL","").strip():
             ai_note = "AI endpoint not configured; showing deterministic pattern matches only. Configure .env to enable AI."
         else:
             try:
-                ai_explanation = await ask_model(log_text, analysis)
+                ai_explanation = await ask_model(request.log_text, analysis)
                 ai_used = True
             except httpx.TimeoutException:
                 ai_note = "AI request timed out; showing pattern matches only. Try again or increase LLM_TIMEOUT_SECONDS."
@@ -105,4 +99,4 @@ async def diagnose(request: DiagnoseRequest) -> DiagnoseResponse:
                 ai_note = f"AI endpoint returned HTTP {exc.response.status_code}; showing pattern matches only. Check endpoint, model name and credentials."
             except (httpx.HTTPError, RuntimeError, ValueError) as exc:
                 ai_note = f"AI explanation unavailable ({str(exc)[:180]}); showing pattern matches only."
-    return DiagnoseResponse(**analysis, ai_used=ai_used, ai_note=ai_note, ai_explanation=ai_explanation)
+    return DiagnoseResponse(**analysis,ai_used=ai_used,ai_note=ai_note,ai_explanation=ai_explanation)
