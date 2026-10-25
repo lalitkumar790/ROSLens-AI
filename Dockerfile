@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY static ./static
 COPY sample_logs ./sample_logs
-COPY .env.example ./ ./
-COPY README.md LICENSE SECURITY.md ./
+COPY benchmarks ./benchmarks
+COPY docs ./docs
+COPY tests ./tests
+COPY .github ./.github
+COPY .env.example README.md LICENSE SECURITY.md pytest.ini ./
 
 RUN useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app
 USER appuser
