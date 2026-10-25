@@ -11,7 +11,7 @@ ROSLens AI analyzes ROS 2 logs, surfaces evidence-backed diagnostic hypotheses, 
 - Deterministic matching for missing packages and executables, TF extrapolation, topic/QoS issues, node crashes, Gazebo resources and serial access.
 - Evidence lines, explanations, next checks and suggested commands.
 - Optional OpenAI-compatible text model explanation with graceful fallback.
-- In-memory screenshot analysis endpoint for PNG/JPEG/WebP with file-size and signature checks; requires a vision-capable model endpoint.
+- Screenshot analysis for PNG/JPEG/WebP with file-size and signature checks; supports Ollama/OpenAI-compatible vision payload formats and requires a vision-capable model endpoint.
 - Browser UI, FastAPI API, sample logs, tests, Docker and GitHub Actions CI.
 - Small labelled synthetic regression benchmark.
 
@@ -42,15 +42,16 @@ LLM_API_KEY=ollama
 LLM_TIMEOUT_SECONDS=45
 MAX_LOG_CHARS=20000
 MAX_IMAGE_BYTES=5242880
+LLM_VISION_FORMAT=auto
 ```
 
-The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. Without endpoint/model settings, deterministic diagnostics still work. Never commit secrets.
+The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. `LLM_VISION_FORMAT=auto` selects Ollama-style image payloads for URLs containing `ollama` or port `11434`, and OpenAI-style payloads otherwise. Override with `ollama` or `openai` if needed. For local Ollama, try a vision-capable model such as `gemma4:e4b`; text-only models cannot analyze screenshots. Without endpoint/model settings, deterministic diagnostics still work. Never commit secrets.
 
 ## API
 
 - `GET /api/health`: health and model configuration.
 - `POST /api/diagnose`: JSON with `log_text` and optional `use_ai`.
-- `POST /api/diagnose-image`: multipart image field `image` plus optional `question`; accepts PNG/JPEG/WebP, up to 5 MiB by default. Images are handled in memory, not saved to disk. A configured vision-capable model is required.
+- `POST /api/diagnose-image`: multipart image field `image` plus optional `question`; accepts PNG/JPEG/WebP, up to 5 MiB by default. ROSLens does not intentionally persist uploaded images to the project directory. FastAPI's upload handling may temporarily spool files to system temporary storage; the image is then sent to your configured model endpoint. A configured vision-capable model is required.
 
 Example: `{"log_text":"Package 'example_pkg' not found","use_ai":false}`.
 
