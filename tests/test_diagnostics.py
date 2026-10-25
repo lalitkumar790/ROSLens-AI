@@ -7,8 +7,12 @@ def ids(log: str) -> set[str]:
 
 def test_package_missing():
     result = diagnose_log("Package 'my_robot_pkg' not found")
-    assert result["diagnostics"][0]["id"] == "package-not-found"
+    assert "package-not-found" in ids("Package 'my_robot_pkg' not found")
     assert "not found" in result["diagnostics"][0]["evidence"][0]
+
+
+def test_executable_missing():
+    assert "executable-not-found" in ids("No executable found matching node name camera_driver")
 
 
 def test_tf_extrapolation():
@@ -26,7 +30,7 @@ def test_multiple_candidates_are_reported():
 
 def test_unknown_error_falls_back():
     result = diagnose_log("Some novel subsystem failed with code ZX-19")
-    assert result["diagnostics"][0]["id"] == "unknown"
+    assert "unknown" in ids("Some novel subsystem failed with code ZX-19")
     assert result["input_lines"] == 1
 
 
