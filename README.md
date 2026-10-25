@@ -45,7 +45,7 @@ MAX_IMAGE_BYTES=5242880
 LLM_VISION_FORMAT=auto
 ```
 
-The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. `LLM_VISION_FORMAT=auto` selects Ollama-style image payloads for URLs containing `ollama` or port `11434`, and OpenAI-style payloads otherwise. Override with `ollama` or `openai` if needed. For local Ollama, try a vision-capable model such as `gemma4:e4b`; text-only models cannot analyze screenshots. Without endpoint/model settings, deterministic diagnostics still work. Never commit secrets.
+The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. `LLM_VISION_FORMAT=auto` selects Ollama-style image payloads for URLs containing `ollama` or port `11434`, and OpenAI-style payloads otherwise. Override with `ollama` or `openai` if needed. For local Ollama, install Ollama, run `ollama pull gemma4:e4b`, then use `LLM_BASE_URL=http://localhost:11434/v1` and `LLM_MODEL=gemma4:e4b`. Text-only models cannot analyze screenshots. When running ROSLens in Docker on Docker Desktop, use `http://host.docker.internal:11434/v1` rather than `localhost` so the container can reach the host model server; confirm Ollama is listening on an address reachable from Docker. Without endpoint/model settings, deterministic diagnostics still work. Never commit secrets.
 
 ## API
 
