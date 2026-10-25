@@ -12,4 +12,5 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-ollama}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-45}
       MAX_LOG_CHARS: ${MAX_LOG_CHARS:-20000}
+      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-5242880}
     restart: unless-stopped
