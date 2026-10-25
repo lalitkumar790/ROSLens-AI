@@ -2,16 +2,16 @@
 
 Run `python benchmarks/run_benchmark.py` from the repository root.
 
-The runner reports exact-set match rate and per-label precision/recall against labelled synthetic logs. A label is the expected diagnostic category, not proof of the true root cause.
+The runner reports exact-set match rate and per-label precision/recall against labelled synthetic logs. Labels indicate expected categories, not proven root causes.
 
 ## Limitations
 
-- This initial set is synthetic and small.
-- It does not cover all ROS distributions, middleware, launch configurations, hardware or simulator versions.
-- Its score is a regression signal only and must not be marketed as real-world accuracy.
-- Add reviewed, permissioned and privacy-scrubbed examples before reporting broader performance.
-- Keep a held-out set when tuning the rules.
+- The initial cases are synthetic and small.
+- They do not cover all ROS distributions, middleware, launch setups, hardware or Gazebo versions.
+- Scores are regression signals and are not real-world accuracy estimates.
+- Add reviewed, permissioned, privacy-scrubbed cases before making broader performance claims.
+- Keep a held-out set when tuning rules.
 
 ## Adding cases
 
-Append one JSON object per line with a stable `id`, raw `input`, expected diagnostic ID array, and a short provenance note. Review false positives as well as missed matches. Use `unknown` only if the known categories genuinely do not apply.
+Append one JSON object per line with a stable `id`, raw `input`, expected diagnostic ID array, and provenance note. Review false positives and misses. Use `unknown` only when no current known category applies.
