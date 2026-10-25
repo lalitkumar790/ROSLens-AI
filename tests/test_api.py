@@ -76,3 +76,81 @@ def test_successful_image_diagnosis_uses_ollama_format(monkeypatch):
     assert response.json()["ai_used"] is True
     assert response.json()["ai_explanation"] == "The screenshot shows a ROS launch error."
     mock.assert_awaited_once()
+
+
+def test_ollama_vision_payload_uses_data_url_string(monkeypatch):
+    import asyncio
+    from app import main
+
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("LLM_MODEL", "gemma4:e4b")
+    monkeypatch.setenv("LLM_VISION_FORMAT", "auto")
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices":[{"message":{"content":"visible error"}}]}
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, **kwargs):
+            captured["url"] = url
+            captured["payload"] = kwargs["json"]
+            return FakeResponse()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
+    result = asyncio.run(main.ask_model_about_image(b"pngbytes", "image/png", "read it"))
+    assert result == "visible error"
+    image_part = captured["payload"]["messages"][1]["content"][1]
+    assert image_part["type"] == "image_url"
+    assert isinstance(image_part["image_url"], str)
+    assert image_part["image_url"].startswith("data:image/png;base64,")
+
+
+def test_openai_vision_payload_uses_url_object(monkeypatch):
+    import asyncio
+    from app import main
+
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.example.test/v1")
+    monkeypatch.setenv("LLM_MODEL", "vision-model")
+    monkeypatch.setenv("LLM_VISION_FORMAT", "auto")
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices":[{"message":{"content":"visible error"}}]}
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, **kwargs):
+            captured["payload"] = kwargs["json"]
+            return FakeResponse()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
+    result = asyncio.run(main.ask_model_about_image(b"pngbytes", "image/png", "read it"))
+    assert result == "visible error"
+    image_part = captured["payload"]["messages"][1]["content"][1]
+    assert image_part["type"] == "image_url"
+    assert image_part["image_url"]["url"].startswith("data:image/png;base64,")
