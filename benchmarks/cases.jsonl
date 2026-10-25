@@ -1,0 +1,11 @@
+{"id":"pkg-missing-01","input":"[ERROR] [launch]: package 'robot_bringup' not found","expected":["package-not-found"],"notes":"Synthetic regression case"}
+{"id":"exe-missing-01","input":"No executable found matching node name camera_driver","expected":["executable-not-found"],"notes":"Synthetic regression case"}
+{"id":"tf-future-01","input":"Lookup would require extrapolation into the future. Requested time 12.4, latest data is 12.1","expected":["tf-extrapolation"],"notes":"Synthetic regression case"}
+{"id":"tf-past-01","input":"Lookup would require extrapolation into the past","expected":["tf-extrapolation"],"notes":"Synthetic regression case"}
+{"id":"topic-quiet-01","input":"no publishers on topic /scan; no messages received","expected":["topic-no-publisher"],"notes":"Synthetic regression case"}
+{"id":"qos-01","input":"New publisher discovered offering incompatible QoS. Requested reliability does not match","expected":["qos-incompatible"],"notes":"Synthetic regression case"}
+{"id":"crash-python-01","input":"Traceback (most recent call last):\n  File node.py, line 10\nRuntimeError: sensor offline","expected":["node-crash"],"notes":"Synthetic regression case"}
+{"id":"crash-segfault-01","input":"[ERROR] process has died [pid 123, exit code -11]\nSegmentation fault","expected":["node-crash"],"notes":"Synthetic regression case"}
+{"id":"gazebo-resource-01","input":"Unable to find uri model://my_robot/meshes/base.dae","expected":["gazebo-resource"],"notes":"Synthetic regression case"}
+{"id":"serial-permission-01","input":"Permission denied opening /dev/ttyUSB0","expected":["serial-device"],"notes":"Synthetic regression case"}
+{"id":"unknown-01","input":"Subsystem returned code ZX-271 with opaque status","expected":["unknown"],"notes":"Synthetic regression case"}
