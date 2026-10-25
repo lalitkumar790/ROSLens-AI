@@ -4,13 +4,14 @@
 
 ROSLens AI analyzes ROS 2 logs, surfaces evidence-backed diagnostic hypotheses, and recommends read-only checks. It combines deterministic diagnostic rules with an optional OpenAI-compatible LLM endpoint.
 
-> **Status:** early MVP. Diagnoses are hypotheses, not confirmed root causes. Model inference and multimodal screenshot diagnosis still need validation against real model endpoints.
+> **Status:** early MVP. Diagnoses are hypotheses, not confirmed root causes. Text-model inference and screenshot diagnosis need validation against a real vision-capable endpoint.
 
 ## Features
 
 - Deterministic matching for missing packages and executables, TF extrapolation, topic/QoS issues, node crashes, Gazebo resources and serial access.
 - Evidence lines, explanations, next checks and suggested commands.
-- Optional OpenAI-compatible model explanation with graceful fallback.
+- Optional OpenAI-compatible text model explanation with graceful fallback.
+- In-memory screenshot analysis endpoint for PNG/JPEG/WebP with file-size and signature checks; requires a vision-capable model endpoint.
 - Browser UI, FastAPI API, sample logs, tests, Docker and GitHub Actions CI.
 - Small labelled synthetic regression benchmark.
 
@@ -40,6 +41,7 @@ LLM_MODEL=your-installed-model-name
 LLM_API_KEY=ollama
 LLM_TIMEOUT_SECONDS=45
 MAX_LOG_CHARS=20000
+MAX_IMAGE_BYTES=5242880
 ```
 
 The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. Without endpoint/model settings, deterministic diagnostics still work. Never commit secrets.
@@ -48,6 +50,7 @@ The app appends `/chat/completions` to the base URL. Use a model name actually s
 
 - `GET /api/health`: health and model configuration.
 - `POST /api/diagnose`: JSON with `log_text` and optional `use_ai`.
+- `POST /api/diagnose-image`: multipart image field `image` plus optional `question`; accepts PNG/JPEG/WebP, up to 5 MiB by default. Images are handled in memory, not saved to disk. A configured vision-capable model is required.
 
 Example: `{"log_text":"Package 'example_pkg' not found","use_ai":false}`.
 
@@ -82,7 +85,7 @@ Then open http://localhost:8000.
 - [x] Initial deterministic ROS diagnostics and web UI.
 - [x] Synthetic labelled regression benchmark.
 - [ ] Validate a real Gemma-compatible endpoint.
-- [ ] Add multimodal screenshot diagnosis with type/size/model capability checks.
+- [x] Add screenshot endpoint and browser controls with type/size checks (requires a vision-capable model).
 - [ ] Add reviewed, permissioned and privacy-scrubbed real-world benchmark cases.
 - [ ] Improve ROS distribution, middleware and simulator context.
 
