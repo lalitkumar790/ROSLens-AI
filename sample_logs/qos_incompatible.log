@@ -1,0 +1,1 @@
+[WARN] [rclcpp]: New publisher discovered on topic '/camera/image_raw', offering incompatible QoS. No messages will be received.
