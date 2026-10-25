@@ -35,7 +35,7 @@
           <button id="diagnose-image" class="button button-soft" type="button">Analyze screenshot ↗</button>
           <div id="image-preview-wrap" class="image-preview-wrap" hidden><img id="image-preview" alt="Selected screenshot preview"><button id="clear-image" class="button button-soft" type="button">Remove image</button></div>
           <div id="image-error" class="error-banner" role="alert" hidden></div>
-          <div id="image-result" class="ai-block" hidden><div class="ai-title"><span class="ai-spark">✳</span><h3>Screenshot analysis</h3><span>MODEL RESPONSE</span></div><div id="image-explanation" class="ai-explanation"></div><p class="image-safety">The screenshot is sent to your configured model endpoint and is not stored by this application. The model provider may have its own data handling policies.</p></div>
+          <div id="image-result" class="ai-block" hidden><div class="ai-title"><span class="ai-spark">✳</span><h3>Screenshot analysis</h3><span>MODEL RESPONSE</span></div><div id="image-explanation" class="ai-explanation"></div><p class="image-safety">The screenshot is sent to your configured model endpoint. ROSLens does not intentionally save it to the project directory; upload middleware may use temporary storage. The model provider may have its own data handling policies.</p></div>
         </div>
         <label class="field-label" for="log-input">ROS 2 / Gazebo output</label>
         <textarea id="log-input" spellcheck="false" placeholder="[ERROR] [launch]: package 'robot_bringup' not found…" maxlength="20000"></textarea>
