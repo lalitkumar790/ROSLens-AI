@@ -1,0 +1,81 @@
+"""Deterministic first-pass diagnostics for common ROS 2 / Gazebo errors."""
+from __future__ import annotations
+
+import re
+from typing import Any
+
+RULES: list[dict[str, Any]] = [
+    {"id":"package-not-found","title":"ROS package not found","severity":"high",
+     "patterns":[r"package ['\"]?([\w.-]+)['\"]? not found",r"package .* not found",r"Could not find a package configuration file provided by"],
+     "why":"ROS 2 or CMake cannot locate a package in the current environment or workspace.",
+     "checks":["Confirm the package name and spelling.","Source the intended ROS distribution setup file and your workspace install/setup file.","If this is a workspace package, build it and inspect the build errors."],
+     "commands":["printenv ROS_DISTRO","ros2 pkg list","colcon build --symlink-install"]},
+    {"id":"executable-not-found","title":"Package executable not found","severity":"high",
+     "patterns":[r"No executable found",r"executable .* not found",r"libexec directory .* does not exist"],
+     "why":"The executable may not be installed, its name may be wrong, or the workspace overlay may not be sourced.",
+     "checks":["Check the executable name in the launch file and package metadata.","Confirm setup.py / CMakeLists.txt installs the node.","Rebuild and source the workspace overlay in the same terminal."],
+     "commands":["ros2 pkg executables <package_name>","colcon build --packages-select <package_name>"]},
+    {"id":"tf-extrapolation","title":"TF transform extrapolation","severity":"medium",
+     "patterns":[r"extrapolation into the future",r"extrapolation into the past",r"Lookup would require extrapolation"],
+     "why":"A transform was requested at a timestamp outside the transform buffer, often due to clock or timestamp mismatch.",
+     "checks":["Check whether use_sim_time is consistent across nodes.","For simulation, verify /clock is publishing and nodes use simulated time.","Inspect frame IDs and timestamp sources; avoid mixing wall time and simulation time."],
+     "commands":["ros2 param get /<node_name> use_sim_time","ros2 topic echo /clock --once","ros2 run tf2_tools view_frames"]},
+    {"id":"topic-no-publisher","title":"Topic has no publisher or messages","severity":"medium",
+     "patterns":[r"topic .* does not appear to be published",r"no publishers",r"no messages received",r"message filter dropping message"],
+     "why":"The expected topic may be inactive, namespaced differently, remapped, or using an incompatible QoS profile.",
+     "checks":["List active topics and inspect the exact topic name.","Check namespaces and remappings in launch files.","Compare publisher and subscriber QoS reliability and durability settings."],
+     "commands":["ros2 topic list","ros2 topic info <topic_name> --verbose","ros2 node list"]},
+    {"id":"qos-incompatible","title":"QoS incompatibility","severity":"medium",
+     "patterns":[r"incompatible qos",r"offered qos profiles",r"incompatible.*reliability",r"requested qos"],
+     "why":"Publisher and subscriber Quality of Service policies may be incompatible, so messages are not delivered.",
+     "checks":["Inspect the topic's publisher and subscription QoS profiles.","Check reliability and durability requirements first.","Use a compatible profile appropriate to the data and system requirements."],
+     "commands":["ros2 topic info <topic_name> --verbose"]},
+    {"id":"node-crash","title":"Node exception or process crash","severity":"high",
+     "patterns":[r"Traceback \(most recent call last\)",r"Segmentation fault",r"process has died",r"Fatal Python error",r"terminate called after throwing"],
+     "why":"A node or subprocess terminated unexpectedly. The first meaningful exception above the shutdown message is usually the most useful clue.",
+     "checks":["Read upward from the final crash line to find the first exception or assertion.","Re-run the node in a terminal to capture the full traceback.","Check recent code changes and dependency versions."],
+     "commands":["ros2 node list","ros2 doctor --report"]},
+    {"id":"gazebo-resource","title":"Gazebo model or resource path issue","severity":"medium",
+     "patterns":[r"Unable to find uri",r"resource path",r"model .* not found",r"Failed to load.*model",r"Fuel.*error"],
+     "why":"Gazebo cannot resolve a model, mesh, world, or asset URI from the configured resource paths or network source.",
+     "checks":["Verify the model/world path exists and URI syntax is correct.","Check the Gazebo version and expected resource path variables.","If the asset is remote, verify connectivity or use a local copy."],
+     "commands":["printenv GZ_SIM_RESOURCE_PATH","printenv IGN_GAZEBO_RESOURCE_PATH"]},
+    {"id":"serial-device","title":"Serial device permission or connection","severity":"medium",
+     "patterns":[r"permission denied.*(/dev/tty|serial)",r"could not open port",r"failed to open.*serial",r"device or resource busy"],
+     "why":"A serial device may be missing, busy, inaccessible to the current user, or mapped to a different device path.",
+     "checks":["Confirm the device path and USB connection.","Check whether another process has opened the port.","Review OS-specific serial permissions; do not blindly change permissions on shared systems."],
+     "commands":["ls -l /dev/ttyUSB* /dev/ttyACM*"]},
+]
+
+SIGNAL_RE = re.compile(r"error|fatal|exception|failed|warning|not found|denied|died|timeout|cannot|could not", re.I)
+
+
+def diagnose_log(log_text: str) -> dict[str, Any]:
+    """Return matching rule candidates, evidence lines, and cautious fallback guidance."""
+    lines = [line.strip() for line in log_text.splitlines() if line.strip()]
+    matches: list[dict[str, Any]] = []
+    for rule in RULES:
+        evidence = [line for line in lines if any(re.search(p, line, re.I) for p in rule["patterns"])]
+        if evidence:
+            matches.append({
+                "id": rule["id"], "title": rule["title"], "severity": rule["severity"],
+                "why": rule["why"], "evidence": evidence[:4],
+                "checks": rule["checks"], "commands": rule["commands"],
+            })
+    signal_lines = [line for line in lines if SIGNAL_RE.search(line)]
+    if not matches:
+        matches.append({
+            "id":"unknown", "title":"No known pattern matched", "severity":"unknown",
+            "why":"The log did not match the current rule set. This does not mean the system is healthy; context may be missing or the error may be unfamiliar.",
+            "evidence": (signal_lines[-6:] if signal_lines else lines[-6:]),
+            "checks":["Capture the full command and complete error output, including lines immediately before failure.","Check node, topic, service and parameter names for typos or namespace differences.","Record ROS distribution, OS, package versions, and whether this occurs in simulation or hardware."],
+            "commands":["ros2 doctor --report","ros2 node list","ros2 topic list"],
+        })
+    # Stable ordering is useful for reproducible tests and benchmark comparison.
+    matches.sort(key=lambda item: ({"high":0,"medium":1,"low":2,"unknown":3}.get(item["severity"],3), item["id"]))
+    return {
+        "summary": f"Found {len(matches)} diagnostic candidate(s). Treat these as hypotheses, not confirmed root causes.",
+        "diagnostics": matches[:5],
+        "signal_lines": signal_lines[-10:],
+        "input_lines": len(lines),
+    }
