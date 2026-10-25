@@ -8,18 +8,13 @@ ROSLens AI analyzes ROS 2 logs, surfaces evidence-backed diagnostic hypotheses, 
 
 ## Features
 
-- Deterministic pattern matching for common ROS 2 / Gazebo errors:
-  - missing packages and executables
-  - TF extrapolation and clock mismatches
-  - topic publisher / QoS issues
-  - node crashes
-  - Gazebo resources
-  - serial-device access
+- Deterministic pattern matching for common ROS 2 / Gazebo errors: missing packages/executables, TF extrapolation, topic/QoS issues, node crashes, Gazebo resource paths and serial-device access.
 - Evidence lines, explanatory hypotheses, next checks and suggested commands.
 - Optional model-generated explanation using an OpenAI-compatible `/chat/completions` endpoint.
 - Graceful fallback when the model isn't configured or unavailable.
-- Small browser UI, FastAPI API, sample logs and automated tests.
+- Browser UI, FastAPI API, sample logs and automated tests.
 - Docker and GitHub Actions CI configuration.
+- A small labelled synthetic diagnostic regression benchmark.
 
 ## Quick start
 
@@ -35,9 +30,7 @@ cp .env.example .env
 python -m uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs.
-
-On Windows, create the environment file with `Copy-Item .env.example .env` instead of `cp`.
+Open http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs. On Windows use `Copy-Item .env.example .env`.
 
 ## Enable a model endpoint
 
@@ -51,22 +44,29 @@ LLM_TIMEOUT_SECONDS=45
 MAX_LOG_CHARS=20000
 ```
 
-The base URL should be the OpenAI-compatible API root; the app appends `/chat/completions`. Use a model name actually served by your selected endpoint. Keep credentials in the local `.env` and never commit secrets. Without endpoint/model settings, deterministic diagnostics still work.
+The app appends `/chat/completions` to the base URL. Use a model name actually served by your endpoint. Without endpoint/model settings, deterministic diagnostics still work. Keep credentials out of git.
 
 ## API
 
-`GET /api/health` reports app health and whether a model endpoint is configured.
+- `GET /api/health`: app health and model configuration.
+- `POST /api/diagnose`: JSON body with `log_text` and optional `use_ai`.
 
-`POST /api/diagnose` request:
+Example:
 
 ```json
-{
-  "log_text": "Package 'example_pkg' not found",
-  "use_ai": false
-}
+{"log_text":"Package 'example_pkg' not found","use_ai":false}
 ```
 
-The response contains `summary`, `diagnostics`, `signal_lines`, `input_lines`, `ai_used`, and optional AI status/explanation fields.
+The response includes `summary`, `diagnostics`, `signal_lines`, `input_lines`, `ai_used`, and optional AI status/explanation fields.
+
+## Run tests and benchmark
+
+```bash
+pytest -q
+python benchmarks/run_benchmark.py
+```
+
+The benchmark currently uses synthetic regression cases. Its score is not a real-world accuracy claim. See [docs/benchmarking.md](docs/benchmarking.md).
 
 ## Docker
 
@@ -76,34 +76,27 @@ docker compose up --build
 
 Then open http://localhost:8000.
 
-## Tests
-
-```bash
-pytest -q
-```
-
-The tests cover known log signatures and API behavior. They are not a proof of model accuracy. A labelled benchmark and evaluation protocol are planned.
-
 ## Safety and privacy
 
 - Logs are untrusted input. The model prompt directs the LLM not to follow instructions inside logs.
 - ROSLens AI does not execute suggested shell commands.
 - Treat AI output as a hypothesis and inspect commands before running them.
 - Logs may contain hostnames, usernames, paths, network addresses or secrets. Redact sensitive material before sending logs to any remote model.
-- Configure API keys only through environment variables; never expose them in frontend code.
+- Store API keys only in local environment configuration, never frontend code.
 - See [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-- [ ] Add a labelled diagnostic benchmark with per-class precision/recall and reproducible evaluation.
-- [ ] Validate Gemma through a real compatible endpoint and document tested model IDs.
-- [ ] Add multimodal screenshot analysis with MIME, size and endpoint capability validation.
-- [ ] Improve ROS 2 distribution / Gazebo-version context and user-visible confidence calibration.
-- [ ] Add Docker-based smoke testing and deploy a public demo.
+- [x] Initial deterministic ROS diagnostics and web UI.
+- [x] Synthetic labelled regression benchmark.
+- [ ] Verify model inference against a real, configured Gemma endpoint.
+- [ ] Add multimodal screenshot analysis with size/type/capability validation.
+- [ ] Add reviewed, privacy-scrubbed real-world benchmark cases.
+- [ ] Improve ROS distribution, middleware and simulator context.
 
 ## Contributing
 
-Issues and focused pull requests are welcome. Please include a reproduction, expected behaviour, and tests where possible.
+Focused bug reports and pull requests are welcome. Please include a reproduction and tests where possible.
 
 ## License
 
